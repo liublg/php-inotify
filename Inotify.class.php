@@ -1,7 +1,6 @@
 <?php
 define('DIRWATCHER_CHANGED', IN_MODIFY | IN_CLOSE_WRITE | IN_MOVE | IN_CREATE | IN_DELETE);
 define('DIRWATCHER_DEBUG', true);
-
 class Inotify
 {
     private $_callbacks = array();
@@ -42,8 +41,11 @@ class Inotify
     );
     public function __construct($path)
     {
+
         $this->pathArray = $this->scandirRec($path);
+        $this->pathArray[]=$path;
         var_export($this->pathArray);
+
         foreach($this->pathArray as $val){
             $this->_init($val);
         }
@@ -88,7 +90,8 @@ class Inotify
                                 $this->_init($change_file);
                                 $this->addWatch($change_file);
                             }
-                        }else if($change_event =='IN_CREATE'){
+                        }else if($change_event =='IN_DELETE_SELF'){
+                            echo "Delete Path:{$change_file}";
                             $this->removeWatch($change_file);
                         }
                     }
@@ -117,13 +120,14 @@ class Inotify
         }
         return $result;
     }
-    public function stopWatch($path){
+    public function removeWatch($path){
+        echo "remove file watch:{$path}".PHP_EOL;
         fclose($this->_inotify[md5($path)]);
     }
     public function __destruct()
     {
         foreach ($this->md5path as $val){
-            fclose($this->_inotify[md5($val)]);
+            $this->removeWatch($val);
         }
     }
 }
