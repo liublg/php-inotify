@@ -39,13 +39,16 @@ class Inotify
         536870912 => array('IN_MASK_ADD','Add events to watch mask for this pathname if it already exists (instead of replacing mask).'),
         2147483648 => array('IN_ONESHOT','Monitor pathname for one event, then remove from watch list.')
     );
+    private $change_file_array = array();
+    private $callBack_func = array();
     public function __construct($path)
     {
 
         $this->pathArray = $this->scandirRec($path);
         $this->pathArray[]=$path;
+        echo '开始监听目录:';
         var_export($this->pathArray);
-
+        echo "\n";
         foreach($this->pathArray as $val){
             $this->_init($val);
         }
@@ -84,6 +87,7 @@ class Inotify
                         $change_event = $this->wd_constants[$event['mask']][0];
                         echo "Object: {$change_file}: {$change_event} (".$this->wd_constants[$event['mask']][1].")\n";
                         //如果是添加事件，加入新监控。
+                        $this->change_file_array[] =$change_file;
                         if($change_event =='IN_CREATE') {
                             echo "Create file:{$change_file}\n";
                             if(is_dir($change_file)){
@@ -94,10 +98,21 @@ class Inotify
                             echo "Delete Path:{$change_file}";
                             $this->removeWatch($change_file);
                         }
+                        foreach ($this->callBack_func as $func){
+                            call_user_func($func,$event);
+                        }
+
+
                     }
                 }
             }
         }
+    }
+    public function getChangeFile(){
+        return $this->change_file_array;
+    }
+    public function addCallBack(callable $func){
+        $this->callBack_func[]=$func;
     }
     /*
      * 递归扫描目录，不借助scandir(此函数可能会被禁用)
@@ -131,5 +146,12 @@ class Inotify
         }
     }
 }
-/*$obj = new Inotify('.');
-$obj ->startWatch();*/
+/*
+function prt($array){
+    echo "======{$array['name']}======";
+}
+$obj = new Inotify('.');
+$obj->addCallBack('prt');
+$obj ->startWatch();
+*/
+
